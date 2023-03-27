@@ -1,0 +1,201 @@
+// Dawid Sroka, 317239
+
+#include <netinet/ip.h>
+#include <netinet/ip_icmp.h>
+#include <arpa/inet.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
+#include <errno.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <sys/select.h>
+#include <sys/time.h>
+
+#include "header.h"
+
+#define DEBUG
+#undef DEBUG
+#ifdef DEBUG
+#define debug(...) fprintf(__VA_ARGS__)
+#else
+#define debug(...)
+#endif
+
+
+uint16_t compute_icmp_checksum (const void *buff, int length);
+
+
+int decode(u_int8_t* buffer, int id, int ttl, char ip_str[]);
+
+void print_reply_addrs(char* senders_ip_str);
+
+
+u_int8_t reps_buffer[3][IP_MAXPACKET];	// buffer for received replies
+
+int main(int argc, char* argv[]) {
+
+	if( argc != 2 ) {
+		fprintf(stderr, "usage: %s host_address\n", argv[0]);
+		exit(EXIT_FAILURE);
+	}
+
+// create recipient
+	struct sockaddr_in recipient;
+	socklen_t recipient_len = sizeof(recipient);
+	bzero (&recipient, recipient_len);
+	recipient.sin_family = AF_INET;
+	int parse_err = inet_pton(AF_INET, argv[1], &(recipient.sin_addr.s_addr));
+	if ( parse_err == 0){
+		fprintf(stderr, "'%s' is not a valid ip address\n", argv[1]);
+		exit(EXIT_FAILURE);
+	}
+
+// identify self
+	int pid = getpid();
+
+// create raw socket
+	int sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+	if (sockfd < 0) {
+		fprintf(stderr, "socket error: %s\n", strerror(errno));
+		return EXIT_FAILURE;
+	}
+
+
+
+
+// create message
+	int ttl_rounds = 30;
+	int end_flag = 0;
+
+	for (int i = 0; i < ttl_rounds; i++)
+	{
+		printf("%2d. ", i+1);
+
+		int ttl = i+1;
+		int ttlerr = setsockopt(sockfd, IPPROTO_IP, IP_TTL, &ttl, sizeof(int));
+		(void)ttlerr;
+
+		struct timeval starts[3];
+		struct timeval ends[3];
+		double rtt[3] = {-1,-1,-1};	//         round trip time
+		double avrtt;				// average rount trip time
+		
+
+		for (int j = 0; j < 3; j++)
+		{
+
+			struct icmp header = {
+				.icmp_type = ICMP_ECHO,
+				.icmp_code = 0,
+				.icmp_cksum = 0,
+				.icmp_hun.ih_idseq.icd_id = pid,
+				.icmp_hun.ih_idseq.icd_seq = 100*ttl +j,
+			};
+				
+			uint16_t cksum = compute_icmp_checksum( (uint16_t*)&header, sizeof(header));
+			header.icmp_cksum = cksum;
+			
+			debug(stderr, "DEBUG %d send packet with id = %d\n", pid, header.icmp_hun.ih_idseq.icd_id);
+			debug(stderr, "DEBUG %d send packet with cksum = %d\n", pid, header.icmp_cksum);
+			debug(stderr, "DEBUG %d send packet with icmp message size = %lu\n", pid, sizeof(header));
+
+
+			// send message
+			gettimeofday(&starts[j], NULL);
+			ssize_t bytes_sent = sendto(sockfd, &header, sizeof(header),
+										0, (struct sockaddr*)&recipient, sizeof(recipient));
+			(void)bytes_sent;
+			if(bytes_sent != sizeof(header)) {
+				debug(stderr, "not all bytes sent!");
+			}
+
+		}
+
+		// RECEIVE MESSAGE
+
+		char reply_addrs[60];	// max 3 different addrs, each max 20 chars long
+		reply_addrs[0] = '\0';
+	
+		char senders_ip_str[3][20];
+		for (int s = 0; s < 3; s++) {
+			senders_ip_str[s][0] = '\0';
+		}
+		
+		fd_set descriptors;
+		FD_ZERO (&descriptors);
+		FD_SET (sockfd, &descriptors);
+		struct timeval tv; tv.tv_sec = 1; tv.tv_usec = 0;
+
+
+		int cnt = 0;	// coutns how many replies came so far
+		while (cnt < 3) {	// to musi być pętla while
+			int ready = select (sockfd+1, &descriptors, NULL, NULL, &tv);
+			if(ready == 0){	// means timeout expired and no packet came
+				break;
+			}
+
+			struct sockaddr_in 	sender;
+			socklen_t 			sender_len = sizeof(sender);
+
+
+			ssize_t packet_len =
+				recvfrom (sockfd, reps_buffer[cnt], IP_MAXPACKET, MSG_DONTWAIT, (struct sockaddr*)&sender, &sender_len);
+			if (packet_len < 0) {
+				continue;
+			}
+
+			// char sender_ip_str[20];
+			inet_ntop(AF_INET, &(sender.sin_addr), senders_ip_str[cnt], 20);
+			debug ("Received IP packet with ICMP content from: %s\n", senders_ip_str[cnt]);
+			// printf("%s\n",senders_ip_str[k]);
+
+
+			if(decode(reps_buffer[cnt], pid, ttl, senders_ip_str[cnt]) < 0) {
+				continue;
+			}
+
+			if(sender.sin_addr.s_addr == recipient.sin_addr.s_addr) {
+				end_flag = 1;
+				debug("Got reply from destination!\n");
+			}
+
+			gettimeofday(&ends[cnt], NULL);
+			rtt[cnt] = (ends[cnt].tv_sec - starts[cnt].tv_sec) * 1000.0;      // sec to ms
+			rtt[cnt] += (ends[cnt].tv_usec - starts[cnt].tv_usec) / 1000.0;   // us to ms
+			
+			debug(stderr, "DEBUG travel time = %.2fms\n", rtt[cnt]);
+
+			strcat(reply_addrs, senders_ip_str[cnt]);
+			strcat(reply_addrs, " ");
+			
+			cnt += 1;
+		}
+
+		printf(reply_addrs);
+		printf("  ");
+
+		if(cnt > 0) {
+			// print_reply_addrs((char*)senders_ip_str);
+		} else{
+			printf("*\n");
+			continue;
+		}
+
+		if(rtt[0] > 0 && rtt[1] > 0 && rtt[2] > 0) {	// calculate avrtt only if all replies came
+			avrtt = ( rtt[0] + rtt[1] + rtt[2] ) / 3;
+			printf("%.2fms\n", avrtt);
+		} else {
+			printf("???\n");
+		}
+
+		if (end_flag == 1)
+			break;
+
+	}
+
+	return EXIT_SUCCESS;
+
+
+}
