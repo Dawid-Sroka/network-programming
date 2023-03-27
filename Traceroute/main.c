@@ -15,14 +15,6 @@
 
 #include "header.h"
 
-#define DEBUG
-#undef DEBUG
-#ifdef DEBUG
-#define debug(...) fprintf(__VA_ARGS__)
-#else
-#define debug(...)
-#endif
-
 
 uint16_t compute_icmp_checksum (const void *buff, int length);
 
@@ -97,10 +89,6 @@ int main(int argc, char* argv[]) {
 			uint16_t cksum = compute_icmp_checksum( (uint16_t*)&header, sizeof(header));
 			header.icmp_cksum = cksum;
 			
-			debug(stderr, "DEBUG %d send packet with id = %d\n", pid, header.icmp_hun.ih_idseq.icd_id);
-			debug(stderr, "DEBUG %d send packet with cksum = %d\n", pid, header.icmp_cksum);
-			debug(stderr, "DEBUG %d send packet with icmp message size = %lu\n", pid, sizeof(header));
-
 			// time stamp start
 			if (gettimeofday(&starts[j], NULL) < 0) {
 				fprintf(stderr, "gettimeofday error: %s\n", strerror(errno));
@@ -169,7 +157,6 @@ int main(int argc, char* argv[]) {
 			// check if it's a final echo reply
 			if(sender.sin_addr.s_addr == recipient.sin_addr.s_addr) {
 				end_flag = 1;
-				debug("Got reply from destination!\n");
 			}
 
 			// time stamp end
@@ -180,8 +167,6 @@ int main(int argc, char* argv[]) {
 			rtt[cnt] = (ends[cnt].tv_sec - starts[cnt].tv_sec) * 1000.0;      // sec to ms
 			rtt[cnt] += (ends[cnt].tv_usec - starts[cnt].tv_usec) / 1000.0;   // us to ms
 			
-			debug(stderr, "DEBUG travel time = %.2fms\n", rtt[cnt]);
-
 			strcat(reply_addrs, senders_ip_str[cnt]);
 			strcat(reply_addrs, " ");
 			
