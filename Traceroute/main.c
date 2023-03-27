@@ -26,7 +26,6 @@
 
 uint16_t compute_icmp_checksum (const void *buff, int length);
 
-
 int decode(u_int8_t* buffer, int id, int ttl, char ip_str[]);
 
 void print_reply_addrs(char* senders_ip_str);
@@ -36,7 +35,7 @@ u_int8_t reps_buffer[3][IP_MAXPACKET];	// buffer for received replies
 
 int main(int argc, char* argv[]) {
 
-	if( argc != 2 ) {
+	if ( argc != 2 ) {
 		fprintf(stderr, "usage: %s host_address\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
@@ -46,8 +45,7 @@ int main(int argc, char* argv[]) {
 	socklen_t recipient_len = sizeof(recipient);
 	bzero (&recipient, recipient_len);
 	recipient.sin_family = AF_INET;
-	int parse_err = inet_pton(AF_INET, argv[1], &(recipient.sin_addr.s_addr));
-	if ( parse_err == 0){
+	if ( inet_pton(AF_INET, argv[1], &(recipient.sin_addr.s_addr)) == 0) {
 		fprintf(stderr, "'%s' is not a valid ip address\n", argv[1]);
 		exit(EXIT_FAILURE);
 	}
@@ -74,8 +72,10 @@ int main(int argc, char* argv[]) {
 		printf("%2d. ", i+1);
 
 		int ttl = i+1;
-		int ttlerr = setsockopt(sockfd, IPPROTO_IP, IP_TTL, &ttl, sizeof(int));
-		(void)ttlerr;
+		if ( setsockopt(sockfd, IPPROTO_IP, IP_TTL, &ttl, sizeof(int)) < 0) {
+			fprintf(stderr, "setsockopt error: %s\n", strerror(errno));
+			return EXIT_FAILURE;
+		}
 
 		struct timeval starts[3];
 		struct timeval ends[3];
@@ -103,12 +103,20 @@ int main(int argc, char* argv[]) {
 
 
 			// send message
-			gettimeofday(&starts[j], NULL);
+			if (gettimeofday(&starts[j], NULL) < 0) {
+				fprintf(stderr, "gettimeofday error: %s\n", strerror(errno));
+				return EXIT_FAILURE;
+			}
+
 			ssize_t bytes_sent = sendto(sockfd, &header, sizeof(header),
 										0, (struct sockaddr*)&recipient, sizeof(recipient));
-			(void)bytes_sent;
-			if(bytes_sent != sizeof(header)) {
-				debug(stderr, "not all bytes sent!");
+			if(bytes_sent < 0) {
+				fprintf(stderr, "sendto error: %s\n", strerror(errno));
+				return EXIT_FAILURE;
+			}
+			else if(bytes_sent != sizeof(header)) {
+				fprintf(stderr, "sendto error: not all bytes sent\n");
+				return EXIT_FAILURE;
 			}
 
 		}
@@ -135,6 +143,10 @@ int main(int argc, char* argv[]) {
 			if(ready == 0){	// means timeout expired and no packet came
 				break;
 			}
+			else if (ready < 0) {
+				fprintf(stderr, "select error: %s\n", strerror(errno));
+				return EXIT_FAILURE;
+			}
 
 			struct sockaddr_in 	sender;
 			socklen_t 			sender_len = sizeof(sender);
@@ -143,11 +155,20 @@ int main(int argc, char* argv[]) {
 			ssize_t packet_len =
 				recvfrom (sockfd, reps_buffer[cnt], IP_MAXPACKET, MSG_DONTWAIT, (struct sockaddr*)&sender, &sender_len);
 			if (packet_len < 0) {
-				continue;
+				if(errno == 11)
+					continue;
+				else{
+					fprintf(stderr, "recvfrom error: %s\n", strerror(errno));
+					return EXIT_FAILURE;				
+				}
 			}
 
 			// char sender_ip_str[20];
-			inet_ntop(AF_INET, &(sender.sin_addr), senders_ip_str[cnt], 20);
+			if ( inet_ntop(AF_INET, &(sender.sin_addr), senders_ip_str[cnt], 20) == NULL){
+				fprintf(stderr, "inet_ntop error: %s\n", strerror(errno));
+				return EXIT_FAILURE;	
+			}	
+
 			debug ("Received IP packet with ICMP content from: %s\n", senders_ip_str[cnt]);
 			// printf("%s\n",senders_ip_str[k]);
 
@@ -161,7 +182,11 @@ int main(int argc, char* argv[]) {
 				debug("Got reply from destination!\n");
 			}
 
-			gettimeofday(&ends[cnt], NULL);
+
+			if (gettimeofday(&ends[cnt], NULL) < 0) {
+				fprintf(stderr, "gettimeofday error: %s\n", strerror(errno));
+				return EXIT_FAILURE;
+			}
 			rtt[cnt] = (ends[cnt].tv_sec - starts[cnt].tv_sec) * 1000.0;      // sec to ms
 			rtt[cnt] += (ends[cnt].tv_usec - starts[cnt].tv_usec) / 1000.0;   // us to ms
 			
