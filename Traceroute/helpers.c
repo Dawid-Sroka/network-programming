@@ -17,6 +17,7 @@ uint16_t compute_icmp_checksum (const void *buff, int length) {
 	return (uint16_t)(~(sum + (sum >> 16)));
 }
 
+
 int safe_ntop(uint32_t* raw, char* dst) {
 	if ( inet_ntop(AF_INET, raw, dst, 20) == NULL){
 		fprintf(stderr, "inet_ntop error: %s\n", strerror(errno));
@@ -25,11 +26,15 @@ int safe_ntop(uint32_t* raw, char* dst) {
 		return 1;
 }
 
+/**
+ * given from 1 to 3 ip addresses, print them without repetitions
+ * 
+ * senders_ip_raw - addresses 
+ * senders_bitmap - auxillary bitmap
+ */
 void print_reply_addrs(uint32_t senders_ip_raw[], int senders_bitmap[]) {
 
-	// char *str0, *str1, *str2;
 	char str0[20], str1[20], str2[20];
-
 
 	if (senders_bitmap[0] == 1)
 		safe_ntop(&senders_ip_raw[0],str0);
@@ -54,7 +59,7 @@ void print_reply_addrs(uint32_t senders_ip_raw[], int senders_bitmap[]) {
 			strcat(reply_addrs, str1);
 		}
 	}
-	else {
+	else {								// three came
 		if(senders_ip_raw[0] == senders_ip_raw[1]){
 			strcat(reply_addrs, str0);
 			if(senders_ip_raw[1] != senders_ip_raw[2]) {
@@ -76,5 +81,3 @@ void print_reply_addrs(uint32_t senders_ip_raw[], int senders_bitmap[]) {
 	strcat(reply_addrs, "  ");
 	printf("%s", reply_addrs);
 }
-
-

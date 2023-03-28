@@ -12,6 +12,16 @@
 
 #include "header.h"
 
+/**
+ * Look into packet and check if it maches our id and ttl
+ * 
+ * buffer - buffer with packet 
+ * id     - pid
+ * ttl    - currently processed ttl
+ * 
+ * returns 0 if packet in buffer matches our id and ttl
+ * and a negative value in any other case
+ */
 int decode(u_int8_t* buffer, int id, int ttl){
 
     struct ip* 	ip_header = (struct ip*) buffer;

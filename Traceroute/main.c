@@ -17,13 +17,11 @@
 
 
 uint16_t compute_icmp_checksum (const void *buff, int length);
-
 int decode(u_int8_t* buffer, int id, int ttl);
-
 void print_reply_addrs(uint32_t senders_ip_raw[], int senders_bitmap[]);
 
-
 u_int8_t reps_buffer[3][IP_MAXPACKET];	// buffer for received replies
+
 
 int main(int argc, char* argv[]) {
 
@@ -107,22 +105,12 @@ int main(int argc, char* argv[]) {
 			}
 
 		}
-
-		char reply_addrs[60];	// max 3 different addrs, each max 20 chars long
-		reply_addrs[0] = '\0';
 	
+		// response addresses buffer
 		uint32_t senders_ip_raw[3];
-		int senders_bitmap[3];
-		for (int s = 0; s < 3; s++) {
-			senders_bitmap[s] = 0;
-		}
-
-		char senders_ip_str[3][20];
-		for (int s = 0; s < 3; s++) {
-			senders_ip_str[s][0] = '\0';
-			(void)senders_ip_str[s];
-		}
+		int senders_bitmap[3] = {0,0,0};	// auxillary
 		
+		// preparing for select
 		fd_set descriptors;
 		FD_ZERO (&descriptors);
 		FD_SET (sockfd, &descriptors);
@@ -132,6 +120,7 @@ int main(int argc, char* argv[]) {
 		int cnt = 0;	// how many responses for current ttl came so far
 		while (cnt < 3)
 		{
+
 			// select + recvfrom -> wait max 1s
 			int ready = select (sockfd+1, &descriptors, NULL, NULL, &tv);
 			if(ready == 0){	// timeout expired and no packet came
@@ -151,46 +140,37 @@ int main(int argc, char* argv[]) {
 				return EXIT_FAILURE;				
 			}
 
-			// check if it's addressed to us and not expired
-			if(decode(reps_buffer[cnt], pid, ttl) < 0) {
+
+			// check if the packet maches our pid and current ttl
+			if(decode(reps_buffer[cnt], pid, ttl) == 0) {
+
+				// note down the addresses 
+				senders_ip_raw[cnt] = sender.sin_addr.s_addr;
+				senders_bitmap[cnt] = 1;
+
+				// check if it's a final echo reply
+				if(sender.sin_addr.s_addr == recipient.sin_addr.s_addr) {
+					end_flag = 1;
+				}
+
+				// time stamp end
+				if (gettimeofday(&ends[cnt], NULL) < 0) {
+					fprintf(stderr, "gettimeofday error: %s\n", strerror(errno));
+					return EXIT_FAILURE;
+				}
+				rtt[cnt] = (ends[cnt].tv_sec - starts[cnt].tv_sec) * 1000.0;      // sec to ms
+				rtt[cnt] += (ends[cnt].tv_usec - starts[cnt].tv_usec) / 1000.0;   // us to ms
+				
+				// update
+				cnt += 1;
+			}
+			else {
 				continue;
 			}
-			senders_ip_raw[cnt] = sender.sin_addr.s_addr;
-			senders_bitmap[cnt] = 1;
 
-			// if ( inet_ntop(AF_INET, &(sender.sin_addr), senders_ip_str[cnt], 20) == NULL){
-			// 	fprintf(stderr, "inet_ntop error: %s\n", strerror(errno));
-			// 	return EXIT_FAILURE;	
-			// }	
-
-			// check if it's a final echo reply
-			if(sender.sin_addr.s_addr == recipient.sin_addr.s_addr) {
-				end_flag = 1;
-			}
-
-			// time stamp end
-			if (gettimeofday(&ends[cnt], NULL) < 0) {
-				fprintf(stderr, "gettimeofday error: %s\n", strerror(errno));
-				return EXIT_FAILURE;
-			}
-			rtt[cnt] = (ends[cnt].tv_sec - starts[cnt].tv_sec) * 1000.0;      // sec to ms
-			rtt[cnt] += (ends[cnt].tv_usec - starts[cnt].tv_usec) / 1000.0;   // us to ms
-			
-			// strcat(reply_addrs, senders_ip_str[cnt]);
-			// strcat(reply_addrs, " ");
-			
-			cnt += 1;
 		}
 
-		// print appropriate output
-		printf(reply_addrs);
-		// printf("  ");
-
-		// if(cnt == 0) {
-		// 	printf("*\n");
-		// 	continue;
-		// }
-
+		// -- PRINT OUTPUT ACCORDINGLY
 		if(cnt > 0) {
 			print_reply_addrs(senders_ip_raw, senders_bitmap);
 		} else{
