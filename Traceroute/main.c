@@ -51,7 +51,7 @@ int main(int argc, char* argv[]) {
 	}
 
 
-	// -- MAIN ROUTINE
+	// -- MAIN ROUTINE --
 	int ttl_rounds = 30;
 	int end_flag = 0;
 
@@ -72,7 +72,7 @@ int main(int argc, char* argv[]) {
 		double rtt[3] = {-1,-1,-1};	//         round trip time
 		double avrtt;				// average rount trip time
 		
-		// -- SENDING
+		// -- SENDING --
 		for (int j = 0; j < 3; j++)
 		{
 			// create ICMP message
@@ -116,7 +116,7 @@ int main(int argc, char* argv[]) {
 		FD_SET (sockfd, &descriptors);
 		struct timeval tv; tv.tv_sec = 1; tv.tv_usec = 0;
 
-		// -- RECEIVING
+		// -- RECEIVING --
 		int cnt = 0;	// how many responses for current ttl came so far
 		while (cnt < 3)
 		{
@@ -170,7 +170,7 @@ int main(int argc, char* argv[]) {
 
 		}
 
-		// -- PRINT OUTPUT ACCORDINGLY
+		// -- PRINT OUTPUT ACCORDINGLY --
 		if(cnt > 0) {
 			print_reply_addrs(senders_ip_raw, senders_bitmap);
 		} else{
