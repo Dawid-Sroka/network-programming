@@ -11,4 +11,5 @@
 
 
 uint16_t compute_icmp_checksum (const void *buff, int length);
-int decode(u_int8_t* buffer, int id, int ttl, char ip_str[]);
+int decode(u_int8_t* buffer, int id, int ttl);
+void print_reply_addrs(uint32_t senders_ip_raw[], int senders_bitmap[]);

@@ -12,8 +12,7 @@
 
 #include "header.h"
 
-int decode(u_int8_t* buffer, int id, int ttl, char ip_str[]){
-    (void)ip_str;
+int decode(u_int8_t* buffer, int id, int ttl){
 
     struct ip* 	ip_header = (struct ip*) buffer;
     ssize_t		ip_header_len = 4 * ip_header->ip_hl;
