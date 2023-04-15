@@ -1,3 +1,5 @@
 conf_in
 *.o
 router
+help.txt
+.gdb_history
