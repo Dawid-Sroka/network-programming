@@ -49,10 +49,10 @@ int safe_ntop(uint32_t* raw, char* dst) {
 
 void print_entries(){
     int free = 0;
-    fprintf(stdout, "network             broadcast       dist via\n" );
+    fprintf(stdout, "network            broadcast       dist via\n" );
 
     while (Rtab[free].used == 1) {
-        fprintf(stdout, "%-19s ", Rtab[free].network);
+        fprintf(stdout, "%-18s ", Rtab[free].network);
         fprintf(stdout, "%-15s ", Rtab[free].brd);
         fprintf(stdout, "%-4d ", Rtab[free].dist);
         fprintf(stdout, "%s\n", Rtab[free].via);
@@ -79,13 +79,10 @@ void add_entry(char *net, int dist, char *via) {
 		exit(EXIT_FAILURE);
 	}
 
-    char *mask_len = strtok_r(NULL, "/", &save_ptr);
-    uint8_t k = strtol(mask_len, NULL, 10);
-    uint32_t mask = ((1 << k) - 1 ) << (32 - k);
-    net_addr_n = __bswap_32(net_addr_n);
-    uint32_t brd_addr_n = net_addr_n | ( ~ mask );
-    brd_addr_n = __bswap_32(brd_addr_n);
-    // uint32_t brd_addr_n = (net_addr_n & mask) | ((1 << (32 - k)) - 1);
+    uint8_t mask_len = strtol( strtok_r(NULL, "/", &save_ptr), NULL, 10);
+    uint32_t subnet = ((1 << mask_len) - 1 ) << (32 - mask_len);
+    subnet = __bswap_32(subnet);    // because of endianess
+    uint32_t brd_addr_n = net_addr_n | ( ~ subnet );
 
     safe_ntop(&brd_addr_n, Rtab[free].brd);
 }
@@ -93,7 +90,6 @@ void add_entry(char *net, int dist, char *via) {
 void read_input() {
     int n;  // number of interfaces
     scanf("%d",&n);
-    debug(stdout, "[%p] %d\n", &n, n);
 
     for (int i = 0; i < n; i++)
     {
@@ -103,35 +99,8 @@ void read_input() {
         char pass[20];
         int dist;
         scanf("%s %d", pass, &dist);
-        debug(stdout, "%s\n", net);
-        debug(stdout, "%d\n", dist);
-
 
         add_entry(net,dist,net);
-        debug(stdout, "after add%d\n", dist);
-
-
-
-
-        // char *save_ptr = NULL;
-        // char *addr_tok = strtok_r(Rtab[i].network, "/", &save_ptr);
-        // strcpy(Rtab[i].brd, addr_tok);
-        // char *mask_tok = strtok_r(NULL, "/", &save_ptr);
-
-        // char addr[16];
-        // strcpy(addr, addr_tok);
-        // char mask[2];
-        // strcpy(mask, mask_tok);
-
-        // debug(stdout, "[%p] %s\n", addr, addr);
-        // debug(stdout, "[%p] %s\n", mask, mask);
-
-        // char pass[8];
-        // scanf("%s %d", pass, &(Rtab[i].dist));
-
-
-
-        // debug(stdout, "[%p] %d\n", &(Rtab[i].dist), Rtab[i].dist);
     }
 
 }
