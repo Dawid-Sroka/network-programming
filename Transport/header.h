@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <sys/queue.h>
 
+#define SWS 5
 
 struct packet;
 
@@ -33,7 +34,7 @@ struct circlehead;
 typedef CIRCLEQ_HEAD(circlehead, packet) circlehead_t;
 
 // void print_q(packet_t* p);
-void print_q(circlehead_t* head);
+void print_q(circlehead_t* headp, packet_t* p);
 
 
 

@@ -7,7 +7,6 @@
 #include "header.h"
 
 // #define BUF_SIZE 100
-#define SWS 10
 #define MAX_PACKET_SIZE 1000
 
 char buffer[1500];	// buffer for received replies
@@ -37,6 +36,7 @@ int main(int argc, char* argv[]) {
 	{	
 		struct packet* p = malloc(sizeof(struct packet));
 		p->state = 0;
+		p->pstart = i * MAX_PACKET_SIZE;
     	CIRCLEQ_INSERT_TAIL(&head, p, link);
 	}
 
@@ -46,7 +46,6 @@ int main(int argc, char* argv[]) {
 
 	struct packet* winfst = CIRCLEQ_FIRST(&head); // first packet in the window
 
-	print_q(&head);
 
 
 	int expecting = 0;
@@ -60,15 +59,51 @@ int main(int argc, char* argv[]) {
 	int break2 = 0;
 
 	while(expecting < size) {
-		fprintf(stdout, "outer loop\n");
+		// fprintf(stdout, "outer loop\n");
+		print_q(&head, winfst);
+
+		if(break2 == 1) {
+			// find the last packet that received answer (state == 1)
+			struct packet* iter = winfst;
+			// struct packet* next = CIRCLEQ_NEXT(iter, link);
+
+			for (int i = 0; i < SWS; i++)
+			{
+				if ( iter->state == 1) {
+					iter->state = 0;	// reset state
+					iter->pstart += SWS * MAX_PACKET_SIZE;  
+					iter = CIRCLEQ_LOOP_NEXT(&head, iter, link);
+				} else {
+					break;
+				}
+			}
+			
+
+			// while (next != (void *)&winfst && next->state == 1) {
+			// 	iter->pstart += SWS * MAX_PACKET_SIZE;  
+			// 	// free(iter);
+			// 	iter = next;
+			// 	next = CIRCLEQ_NEXT(iter, link);
+			// }
+
+			// take the one after, which is the first packet that didn't receive answer (state == 0)
+			// iter->state = 0;
+			// winfst = CIRCLEQ_NEXT(iter, link);
+			winfst = iter;
+		print_q(&head, winfst);
+			expecting = winfst->pstart;
+			fprintf(stdout, "expecting = %d\n", expecting);
+
+			break1 = 1;
+
+		}
 
 		if(break1 == 1) {
-			fprintf(stdout, "break1 == 1\n");
 
-			struct packet* np;
+			struct packet* np = winfst;
 
-			int position = 0;
-			CIRCLEQ_FOREACH(np, &head, link){
+			int position = expecting;
+			for(int i = 0; i < SWS; i++){
 				if (np->state == 0 ) {
 					// char* mes = "GET 0 1000\n";
 					// strcat(mes, itoa(position));
@@ -78,9 +113,24 @@ int main(int argc, char* argv[]) {
 					printf("%s", mes); // outputs so you can see it
 					send(sockfd, mes, strlen(mes), 0);
 				}
-					position+=1000;
-			}	
+				position += MAX_PACKET_SIZE;
+				np = CIRCLEQ_LOOP_NEXT(&head, np, link);
+			}
+
+			// CIRCLEQ_FOREACH(np, &head, link){
+			// 	if (np->state == 0 ) {
+			// 		// char* mes = "GET 0 1000\n";
+			// 		// strcat(mes, itoa(position));
+			// 		int messlen = 11 + how_long(position); 
+			// 		char mes[messlen];
+			// 		snprintf(mes, messlen, "GET %d 1000\n", position);
+			// 		printf("%s", mes); // outputs so you can see it
+			// 		send(sockfd, mes, strlen(mes), 0);
+			// 	}
+			// 		position+=1000;
+			// }	
 		}
+
 
 	// preparing for select
 		fd_set descriptors;
@@ -127,13 +177,17 @@ int main(int argc, char* argv[]) {
 
 					int index = (res_start - expecting) / MAX_PACKET_SIZE;
 					struct packet* iter = winfst;
-					for (int i = 0; i < index; i++) {
-						iter = CIRCLEQ_NEXT(iter, link);
-					}
-					iter->state = 1;
+					for (int i = 0; i < index; i++)
+						iter = CIRCLEQ_LOOP_NEXT(&head, iter, link);
 
-					if (res_start == expecting + MAX_PACKET_SIZE) {
+					iter->state = 1;
+					iter->pstart = expecting + index * MAX_PACKET_SIZE;
+
+					if (index == 0) {
+						fprintf(stdout, "index = 0\n");
+
 						break2 = 1;
+						break;
 					}
 				}
 
@@ -142,34 +196,6 @@ int main(int argc, char* argv[]) {
 
 		}
 
-		if(break2 == 1) {
-			// struct packet* iter = winfst;
-			// struct packet* next;
-			// while (iter->state == 1) {
-			// 	next = CIRCLEQ_NEXT(iter, link);
-			// 	if ( next == winfst) {
-
-			// 	free(iter);
-			// 	iter = next;
-			// 	}
-			// }
-
-			// find the last packet that received answer (state == 1)
-			struct packet* iter = winfst;
-			struct packet* next = CIRCLEQ_NEXT(iter, link);
-			while (next != (void *)&winfst && next->state == 1) {
-				iter->state = 0;	// reset state
-				// free(iter);
-				iter = next;
-				next = CIRCLEQ_NEXT(iter, link);
-			}
-
-			// take the one after, which is the first packet that didn't receive answer (state == 0)
-			iter->state = 0;
-			winfst = CIRCLEQ_NEXT(iter, link);
-			break1 = 1;
-
-		}
 
 	}
 
