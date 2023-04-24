@@ -20,10 +20,7 @@ void print_q(circlehead_t* head) {
     packet_t* np;
     int i = 0;
     CIRCLEQ_FOREACH(np, head, link) {
-
         printf("%d %d\n", i, np->state);
-
-        usleep(200000);
         i++;
     }
 

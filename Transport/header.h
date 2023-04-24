@@ -40,6 +40,7 @@ void print_q(circlehead_t* head);
 
 
 void input_validate(int argc, char* argv[]);
+int establish_connection(char* addr, char* port);
 int how_long(int a);
 
 
