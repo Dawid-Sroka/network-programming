@@ -17,8 +17,30 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <sys/queue.h>
 
 
-void in_validate(int argc, char* argv[]);
+struct packet;
+
+// I will use CIRCLEQ implementations from C queue library
+typedef struct packet {
+	uint8_t state;
+	int pstart;
+	CIRCLEQ_ENTRY(packet) link;           /* Queue */
+} packet_t ;
+
+struct circlehead;
+typedef CIRCLEQ_HEAD(circlehead, packet) circlehead_t;
+
+// void print_q(packet_t* p);
+void print_q(circlehead_t* head);
+
+
+
+
+
+void input_validate(int argc, char* argv[]);
+int how_long(int a);
+
 
 #endif // HEADER_H

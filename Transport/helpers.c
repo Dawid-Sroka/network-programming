@@ -4,7 +4,7 @@
 #define MAX_IP_LEN 15	// valid ip address is max 15 characters long
 
 
-void in_validate(int argc, char* argv[]) {
+void input_validate(int argc, char* argv[]) {
     if ( argc != 5 ) {
 		fprintf(stderr, "usage: %s IPaddr port filename size\n", argv[0]);
 		exit(EXIT_FAILURE);
@@ -25,3 +25,14 @@ void in_validate(int argc, char* argv[]) {
 		exit(EXIT_FAILURE);
 	}
 }
+
+int how_long(int a) {
+	char no[11];
+    snprintf(no, 11, "%d", a);
+	return strlen(no);
+}
+
+
+// int establish_connection(addr, port) {
+
+// }
