@@ -13,6 +13,13 @@ char buffer[SWS][MAX_PACKET_SIZE];	// buffer for received replies
 char header_buffer[40 + MAX_PACKET_SIZE];
 
 
+#undef DEBUG
+// #define DEBUG
+#ifdef DEBUG
+#define debug(...) printf(__VA_ARGS__)
+#else
+#define debug(...)
+#endif
 
 
 
@@ -60,8 +67,8 @@ int main(int argc, char* argv[]) {
 	int break2 = 0;
 
 	while(expecting < size) {
-		// fprintf(stdout, "outer loop\n");
-		print_q(&head, winfst);
+		debug("outer loop\n");
+//		print_q(&head, winfst);
 
 		if(break2 == 1) {
 			// find the last packet that received answer (state == 1)
@@ -71,7 +78,8 @@ int main(int argc, char* argv[]) {
 			for (int i = 0; i < SWS; i++)
 			{
 				if ( iter->state == 1) {
-					dprintf(outfd, buffer[i]);
+					write(outfd, buffer[i], MAX_PACKET_SIZE);
+					// dprintf(outfd, buffer[i]);
 					iter->state = 0;	// reset state
 					iter->pstart += SWS * MAX_PACKET_SIZE;  
 					iter = CIRCLEQ_LOOP_NEXT(&head, iter, link);
@@ -81,9 +89,9 @@ int main(int argc, char* argv[]) {
 			}
 			
 			winfst = iter;
-			print_q(&head, winfst);
+//			print_q(&head, winfst);
 			expecting = winfst->pstart;
-			fprintf(stdout, "expecting = %d\n", expecting);
+			printf("expecting = %d\n", expecting);
 
 			break1 = 1;
 
@@ -101,7 +109,7 @@ int main(int argc, char* argv[]) {
 					int messlen = 11 + how_long(position); 
 					char mes[messlen];
 					snprintf(mes, messlen, "GET %d 1000\n", position);
-					printf("%s", mes); // outputs so you can see it
+//					printf("%s", mes); // outputs so you can see it
 					send(sockfd, mes, strlen(mes), 0);
 				}
 				position += MAX_PACKET_SIZE;
@@ -115,7 +123,7 @@ int main(int argc, char* argv[]) {
 		fd_set descriptors;
 		FD_ZERO (&descriptors);
 		FD_SET (sockfd, &descriptors);
-		struct timeval tv; tv.tv_sec = 0; tv.tv_usec = 100000;
+		struct timeval tv; tv.tv_sec = 0; tv.tv_usec = RTT_us;
 
 		while (1)
 		{
@@ -123,7 +131,7 @@ int main(int argc, char* argv[]) {
 
 			int ready = select (sockfd+1, &descriptors, NULL, NULL, &tv);
 			if(ready == 0){	// timeout expired and no packet came
-				fprintf(stdout, "time expired\n");
+				debug("time expired\n");
 				break1 = 1;
 				break2 = 0;
 				break;
@@ -134,6 +142,7 @@ int main(int argc, char* argv[]) {
 
 			struct sockaddr_in sender;
 			socklen_t sender_len = sizeof(sender);
+
 
 			ssize_t packet_len = recvfrom (sockfd, header_buffer, 40 + IP_MAXPACKET,
 							MSG_DONTWAIT, (struct sockaddr*)&sender, &sender_len);
@@ -146,7 +155,7 @@ int main(int argc, char* argv[]) {
 				int res_start = 0, res_len = 0;
 				char p[10];
 				sscanf(header_buffer, "%s %d %d", p, &res_start, &res_len);
-				// fprintf(stdout, "got %d %d\n", res_start, res_len);
+				debug("got %d %d\n", res_start, res_len);
 
 				if (expecting <= res_start && res_start < expecting + SWS * MAX_PACKET_SIZE) {
 
@@ -156,7 +165,7 @@ int main(int argc, char* argv[]) {
 						iter = CIRCLEQ_LOOP_NEXT(&head, iter, link);
 
 					if(iter->state == 0) {
-						fprintf(stdout, "res %d in the window\n", res_start);
+						debug("res %d in the window\n", res_start);
 						int start_len = how_long(res_start);
 						int len_len = how_long(res_len);
 						memcpy(buffer[index], header_buffer + 4 + 1 + start_len + 1 + len_len + 1, MAX_PACKET_SIZE);
@@ -167,7 +176,7 @@ int main(int argc, char* argv[]) {
 
 
 					if (index == 0) {
-						fprintf(stdout, "index = 0\n");
+						debug("index = 0\n");
 
 						break2 = 1;
 						break;

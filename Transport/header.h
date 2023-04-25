@@ -19,7 +19,8 @@
 #include <unistd.h>
 #include <sys/queue.h>
 
-#define SWS 5
+#define SWS 100
+#define RTT_us 80000
 
 struct packet;
 
