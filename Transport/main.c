@@ -3,6 +3,7 @@
 #include <sys/mman.h>
 
 #include <sys/queue.h>
+#include <sys/param.h>
 
 #include "header.h"
 
@@ -13,7 +14,7 @@ char header_buffer[40 + MAX_PACKET_SIZE];
 
 
 #undef DEBUG
-#define DEBUG
+// #define DEBUG
 #ifdef DEBUG
 #define debug(...) printf(__VA_ARGS__)
 #else
@@ -44,11 +45,11 @@ int main(int argc, char* argv[]) {
 
 
 	int expecting = 0;
-
+  int buf_start_index = 0;
 	int size = atoi(argv[4]);
 	// int npackets = size / (MAX_PACKET_SIZE + 1); 
 	// (void)npackets;
-  int outfd = open(argv[3] ,O_WRONLY);
+  int outfd = open(argv[3] ,O_WRONLY | O_TRUNC);
 
 	int break1 = 1;
 	int break2 = 0;
@@ -62,10 +63,12 @@ int main(int argc, char* argv[]) {
 			struct packet* iter = winfst;
 			// struct packet* next = CIRCLEQ_NEXT(iter, link);
 
-			for (int i = 0; i < SWS; i++)
+      int i = 0;
+			for (i = 0; i < SWS; i++)
 			{
 				if ( iter->state == 1) {
-					write(outfd, buffer[i], MAX_PACKET_SIZE);
+          int bytes_to_write = size - (expecting + i * MAX_PACKET_SIZE); 
+					write(outfd, buffer[(buf_start_index + i) % SWS], MIN(MAX_PACKET_SIZE, bytes_to_write));
 					// dprintf(outfd, buffer[i]);
 					iter->state = 0;	// reset state
 					iter->pstart += SWS * MAX_PACKET_SIZE;  
@@ -78,6 +81,7 @@ int main(int argc, char* argv[]) {
 			winfst = iter;
 //			print_q(&head, winfst);
 			expecting = winfst->pstart;
+      buf_start_index = (buf_start_index + i) % SWS;
 			printf("expecting = %d\n", expecting);
 
 			break1 = 1;
@@ -139,7 +143,8 @@ int main(int argc, char* argv[]) {
 			}
 			if (packet_len > 0) {
 
-				int res_start = 0, res_len = 0;
+				int res_start = 0;
+        int res_len = 0;
 				char p[10];
 				sscanf(header_buffer, "%s %d %d", p, &res_start, &res_len);
 				// debug("got %d %d\n", res_start, res_len);
@@ -155,7 +160,7 @@ int main(int argc, char* argv[]) {
 						debug("res %d in the window\n", res_start);
 						int start_len = how_long(res_start);
 						int len_len = how_long(res_len);
-						memcpy(buffer[index], header_buffer + 4 + 1 + start_len + 1 + len_len + 1, MAX_PACKET_SIZE);
+						memcpy(buffer[(buf_start_index + index) % SWS], header_buffer + 4 + 1 + start_len + 1 + len_len + 1, MIN(MAX_PACKET_SIZE, size - res_start));
 						iter->state = 1;
 						iter->pstart = expecting + index * MAX_PACKET_SIZE;
 						// write(outfd, header_buffer, MAX_PACKET_SIZE);
