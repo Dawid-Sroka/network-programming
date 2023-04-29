@@ -25,6 +25,19 @@
 //     }
 // }
 
+void initiailze_q(circlehead_t* headp){
+
+	CIRCLEQ_INIT(headp);                    /* Initialize the queue */
+
+	for (int i = 0; i < SWS; i++)
+	{	
+		struct packet* p = malloc(sizeof(struct packet));
+		p->state = 0;
+		p->pstart = i * MAX_PACKET_SIZE;
+    	CIRCLEQ_INSERT_TAIL(headp, p, link);
+	}
+}
+
 
 void print_q(circlehead_t* headp, packet_t* p) {
     printf("the queue looks like this:\n");
@@ -46,4 +59,15 @@ void print_q(circlehead_t* headp, packet_t* p) {
     
     printf("end of the queue\n");
 
+}
+
+void free_q(circlehead_t* headp){
+  
+	struct packet *next, *first = CIRCLEQ_FIRST(headp);
+
+	while (first != (void *)headp) {
+		next = CIRCLEQ_NEXT(first, link);
+		free(first);
+		first = next;
+	}
 }

@@ -7,14 +7,13 @@
 #include "header.h"
 
 // #define BUF_SIZE 100
-#define MAX_PACKET_SIZE 1000
 
 char buffer[SWS][MAX_PACKET_SIZE];	// buffer for received replies
 char header_buffer[40 + MAX_PACKET_SIZE];
 
 
 #undef DEBUG
-// #define DEBUG
+#define DEBUG
 #ifdef DEBUG
 #define debug(...) printf(__VA_ARGS__)
 #else
@@ -31,24 +30,12 @@ int main(int argc, char* argv[]) {
 
 // ESTABLISH CONNECTION
 
-	int sockfd = -1;
-	sockfd = establish_connection(argv[1], argv[2]);
+	int sockfd = establish_connection(argv[1], argv[2]);
 
 // INITIALIZE CIRCLE QUEUE 
 
-
 	circlehead_t head;                 /* Queue head */
-	CIRCLEQ_INIT(&head);                    /* Initialize the queue */
-
-	for (int i = 0; i < SWS; i++)
-	{	
-		struct packet* p = malloc(sizeof(struct packet));
-		p->state = 0;
-		p->pstart = i * MAX_PACKET_SIZE;
-    	CIRCLEQ_INSERT_TAIL(&head, p, link);
-	}
-
-
+  initiailze_q(&head);
 
 // 	MAIN ROUTINE
 
@@ -61,14 +48,14 @@ int main(int argc, char* argv[]) {
 	int size = atoi(argv[4]);
 	// int npackets = size / (MAX_PACKET_SIZE + 1); 
 	// (void)npackets;
-    int outfd = open(argv[3] ,O_WRONLY);
+  int outfd = open(argv[3] ,O_WRONLY);
 
 	int break1 = 1;
 	int break2 = 0;
 
 	while(expecting < size) {
-		debug("outer loop\n");
-//		print_q(&head, winfst);
+		// debug("outer loop\n");
+		print_q(&head, winfst);
 
 		if(break2 == 1) {
 			// find the last packet that received answer (state == 1)
@@ -155,7 +142,7 @@ int main(int argc, char* argv[]) {
 				int res_start = 0, res_len = 0;
 				char p[10];
 				sscanf(header_buffer, "%s %d %d", p, &res_start, &res_len);
-				debug("got %d %d\n", res_start, res_len);
+				// debug("got %d %d\n", res_start, res_len);
 
 				if (expecting <= res_start && res_start < expecting + SWS * MAX_PACKET_SIZE) {
 
@@ -189,25 +176,11 @@ int main(int argc, char* argv[]) {
 
 	}
 
-
-
-
-	close(sockfd);
-    close(outfd);
-
-
 // CLEAN
+	close(sockfd);
+  close(outfd);
 
-	struct packet *next, *first = CIRCLEQ_FIRST(&head);
-
-	while (first != (void *)&head) {
-		next = CIRCLEQ_NEXT(first, link);
-		free(first);
-		first = next;
-	}
-
-	sleep(1);
+  free_q(&head);
 
 	return EXIT_SUCCESS;
-
 }

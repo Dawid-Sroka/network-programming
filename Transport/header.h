@@ -19,8 +19,9 @@
 #include <unistd.h>
 #include <sys/queue.h>
 
-#define SWS 100
+#define SWS 10
 #define RTT_us 80000
+#define MAX_PACKET_SIZE 1000
 
 struct packet;
 
@@ -36,6 +37,8 @@ typedef CIRCLEQ_HEAD(circlehead, packet) circlehead_t;
 
 // void print_q(packet_t* p);
 void print_q(circlehead_t* headp, packet_t* p);
+void initiailze_q(circlehead_t* headp);
+void free_q(circlehead_t* headp);
 
 
 
