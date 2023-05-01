@@ -1,7 +1,6 @@
 #include "header.h"
 
 
-#define MAX_IP_LEN 15	// valid ip address is max 15 characters long
 
 
 void input_validate(int argc, char* argv[]) {
@@ -18,9 +17,10 @@ void input_validate(int argc, char* argv[]) {
 
 	close(outfd);
 
-	char addrbuf[MAX_IP_LEN];
+	// char addrbuf[MAX_IP_LEN];
+	uint32_t addr;
 
-	if ( strlen(argv[1]) > MAX_IP_LEN || inet_pton(AF_INET, argv[1], addrbuf) == 0) {
+	if ( strlen(argv[1]) > MAX_IP_LEN || inet_pton(AF_INET, argv[1], &addr) == 0) {
 		fprintf(stderr, "'%s' is not a valid ip address\n", argv[1]);
 		exit(EXIT_FAILURE);
 	}

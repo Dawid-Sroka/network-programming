@@ -19,9 +19,12 @@
 #include <unistd.h>
 #include <sys/queue.h>
 
-#define SWS 10
+#define SWS 1000
 #define RTT_us 80000
 #define MAX_PACKET_SIZE 1000
+
+#define MAX_IP_LEN 15	// valid ip address is max 15 characters long
+
 
 struct packet;
 

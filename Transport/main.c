@@ -45,11 +45,14 @@ int main(int argc, char* argv[]) {
 
 
 	int expecting = 0;
-  int buf_start_index = 0;
+  	int buf_start_index = 0;
 	int size = atoi(argv[4]);
+	uint16_t port = atoi(argv[2]);
+	port = (port >> 8) | (port << 8);
+
 	// int npackets = size / (MAX_PACKET_SIZE + 1); 
 	// (void)npackets;
-  int outfd = open(argv[3] ,O_WRONLY | O_TRUNC);
+  int outfd = open(argv[3] ,O_WRONLY | O_TRUNC | O_APPEND);
 
 	int break1 = 1;
 	int break2 = 0;
@@ -141,10 +144,13 @@ int main(int argc, char* argv[]) {
 				fprintf(stderr, "recvfrom error: %s\n", strerror(errno));
 				return EXIT_FAILURE;				
 			}
-			if (packet_len > 0) {
+
+			uint32_t addr;
+			inet_pton(AF_INET, argv[1], &addr);
+			if (packet_len > 0 && sender.sin_addr.s_addr == addr  && sender.sin_port == port) {
 
 				int res_start = 0;
-        int res_len = 0;
+        		int res_len = 0;
 				char p[10];
 				sscanf(header_buffer, "%s %d %d", p, &res_start, &res_len);
 				// debug("got %d %d\n", res_start, res_len);
