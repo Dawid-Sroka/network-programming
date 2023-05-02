@@ -18,17 +18,18 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <sys/queue.h>
+#include <sys/param.h>
 
 #define SWS 1000
 #define RTT_us 80000
 #define MAX_PACKET_SIZE 1000
-
 #define MAX_IP_LEN 15	// valid ip address is max 15 characters long
 
-
-struct packet;
+// variables
 
 // I will use CIRCLEQ implementations from C queue library
+struct packet;
+
 typedef struct packet {
 	uint8_t state;
 	int pstart;
@@ -38,15 +39,12 @@ typedef struct packet {
 struct circlehead;
 typedef CIRCLEQ_HEAD(circlehead, packet) circlehead_t;
 
-// void print_q(packet_t* p);
 void print_q(circlehead_t* headp, packet_t* p);
 void initiailze_q(circlehead_t* headp);
 void free_q(circlehead_t* headp);
+struct packet* shift_window_q(circlehead_t* headp, struct packet* fst, int expects, int* idx);
 
-
-
-
-
+// helper functions
 void input_validate(int argc, char* argv[]);
 int establish_connection(char* addr, char* port);
 int how_long(int a);
