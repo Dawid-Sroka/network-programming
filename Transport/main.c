@@ -1,7 +1,6 @@
 // Dawid Sroka, 317239
 
 #include <sys/mman.h>
-
 #include <sys/queue.h>
 
 #include "header.h"
@@ -50,8 +49,6 @@ int main(int argc, char* argv[]) {
   uint16_t port = atoi(argv[2]);
   port = (port >> 8) | (port << 8);
 
-  // int npackets = size / (MAX_PACKET_SIZE + 1); 
-  // (void)npackets;
   outfd = open(argv[3] ,O_WRONLY | O_TRUNC | O_APPEND);
 
   int break1 = 1;
@@ -62,34 +59,11 @@ int main(int argc, char* argv[]) {
     print_q(&head, winfst);
 
     if(break2 == 1) {
-      // find the last packet that received answer (state == 1)
-      //struct packet* iter = winfst;
-
-//      int i = 0;
-//      for (i = 0; i < SWS; i++)
-//      {
-//        if ( iter->state == 1) {
-//          int bytes_to_write = size - (expecting + i * MAX_PACKET_SIZE); 
-//          write(outfd, buffer[(buf_start_index + i) % SWS], MIN(MAX_PACKET_SIZE, bytes_to_write));
-//          // dprintf(outfd, buffer[i]);
-//          iter->state = 0;	// reset state
-//          iter->pstart += SWS * MAX_PACKET_SIZE;  
-//          iter = CIRCLEQ_LOOP_NEXT(&head, iter, link);
-//        } else {
-//          break;
-//        }
-//      }
-//      
       winfst = shift_window_q(&head, winfst, expecting, &buf_start_index); 
-
-      //winfst = iter;
-      //			print_q(&head, winfst);
       expecting = winfst->pstart;
-      //buf_start_index = (buf_start_index + i) % SWS;
       printf("expecting = %d\n", expecting);
 
       break1 = 1;
-
     }
 
     if(break1 == 1) {
@@ -105,7 +79,11 @@ int main(int argc, char* argv[]) {
           char mes[messlen];
           snprintf(mes, messlen, "GET %d 1000\n", position);
           //					printf("%s", mes); // outputs so you can see it
-          send(sockfd, mes, strlen(mes), 0);
+          int senderr = send(sockfd, mes, strlen(mes), 0);
+          if(senderr == -1){
+            fprintf(stderr, "send error: %s\n", strerror(errno));
+            return EXIT_FAILURE;				
+          }
         }
         position += MAX_PACKET_SIZE;
         np = CIRCLEQ_LOOP_NEXT(&head, np, link);
