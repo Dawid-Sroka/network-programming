@@ -1,8 +1,6 @@
 #include "header.h"
 
 
-
-
 void input_validate(int argc, char* argv[]) {
   if ( argc != 5 ) {
     fprintf(stderr, "usage: %s IPaddr port filename size\n", argv[0]);
@@ -17,7 +15,6 @@ void input_validate(int argc, char* argv[]) {
 
   close(outfd);
 
-  // char addrbuf[MAX_IP_LEN];
   uint32_t addr;
 
   if ( strlen(argv[1]) > MAX_IP_LEN || inet_pton(AF_INET, argv[1], &addr) == 0) {
@@ -80,8 +77,3 @@ int how_long(int a) {
   snprintf(no, 11, "%d", a);
   return strlen(no);
 }
-
-
-// int establish_connection(addr, port) {
-
-// }

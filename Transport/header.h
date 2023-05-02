@@ -25,8 +25,6 @@
 #define MAX_PACKET_SIZE 1000
 #define MAX_IP_LEN 15	// valid ip address is max 15 characters long
 
-// variables
-
 // I will use CIRCLEQ implementations from C queue library
 struct packet;
 
